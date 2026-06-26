@@ -35,13 +35,15 @@ jobs:
           pod repo update
           pod install
           cd ..
-          flutter build ipa --no-codesign
+          # Vi bygger en ren simulator-app, som alltid legger seg på en fast bane
+          flutter build ios --simulator --no-codesign
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-output
-          # Vi endrer banen til app-pakken inni arkivet:
-          path: build/ios/archive.xcarchive/Products/Applications/
+          # Denne banen er bombesikker i Flutter for simulator-bygg:
+          path: build/ios/iphonesimulator/Runner.app/
+
 
 
