@@ -1,20 +1,27 @@
-platform :ios, '13.0'
+# Universell Flutter Podfile som fungerer både lokalt og i skyen (CI)
+    
+# Sørg for at vi henter riktig filbane uansett miljø
+flutter_root = File.expand_path(File.join('..', '..'), __FILE__)
+if ENV['FLUTTER_ROOT']
+  flutter_root = ENV['FLUTTER_ROOT']
+end
 
-# Henter Flutter-oppsettet automatisk
-require '../../flutter/packages/flutter_tools/bin/xcode_backend.rb'
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'xcode_backend.rb'), flutter_root)
+
+platform :ios, '13.0'
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  flutter_install_all_ios_pods File.dirname(File.expand_path(__file__))
+  flutter_install_all_ios_pods File.dirname(File.expand_path(__FILE__))
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     
-    # Forteller iOS-kompilatoren på GitHub at vi trenger GPS-tillatelse
+    # Aktiverer GPS-tillatelse for geofence-pakken under kompilering
     target.build_configurations.each do |config|
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'PERMISSION_LOCATION=1']
     end
