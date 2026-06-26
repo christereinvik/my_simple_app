@@ -75,17 +75,18 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
     setState(() => _statusTekst = "Overvåker jobb-parkeringen aktivt... (150m sone)");
   }
 
-  void _sendParkeringsVarsel() async {
-    const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
-    const notificationDetails = NotificationDetails(iOS: iosDetails);
-    
-    await _notificationsPlugin.show(
-      0,
-      'Husk parkering! 🚗',
-      'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
-      notificationDetails,
-    );
-  }
+void _sendParkeringsVarsel() async {
+  const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
+  const notificationDetails = NotificationDetails(iOS: iosDetails);
+
+  await _notificationsPlugin.show(
+    id: 0,
+    title: 'Husk parkering! 🚗',
+    body: 'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
+    notificationDetails: notificationDetails
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
