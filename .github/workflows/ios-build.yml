@@ -27,11 +27,8 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Install Dependencies
-        run: flutter pub get
-
       - name: Build iOS App Bundle
-        run: |
+        run: 
           flutter precache --ios
           flutter pub get
           cd ios && pod repo update && pod install && cd ..
