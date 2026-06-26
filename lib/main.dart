@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:geofencing_api/geofencing_api.dart';
+import 'package:geofence_service/geofence_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
@@ -28,7 +28,7 @@ class GeofenceSkjerm extends StatefulWidget {
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   String _statusTekst = "Søker etter GPS-signal...";
 
-  // Dine nøyaktige jobbkoordinater
+  // Koordinater (Satt til UiT i Tromsø)
   final double jobbLatitude = 69.6815; 
   final double jobbLongitude = 18.9725;
 
@@ -50,14 +50,7 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   }
 
   void _startGeofencing() async {
-    // 1. Sjekk tillatelse (Siden det ikke returnerer en bool, sjekker vi om vi har tilgang)
-    final permission = await GeofencingApi.instance.requestLocationPermission();
-    if (!permission) {
-      setState(() => _statusTekst = "Appen må ha tilgang til posisjon i innstillinger.");
-      return;
-    }
-
-    // 2. Opprett sonen (Vi bruker 'Geofence' direkte med radius slik pakken vil ha det)
+    // Definerer sonen med Geofence og GeofenceRadius slik pakken krever
     final jobbSone = Geofence(
       id: 'jobb_parkeringsplass',
       latitude: jobbLatitude,
@@ -65,22 +58,27 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       radius: [GeofenceRadius(id: 'radius_150m', length: 150.0)],
     );
 
-    // 3. Start lytteren (Parameteren heter 'geofences')
-    GeofencingApi.instance.setup(
+    // Initialiserer overvåkingen via GeofenceService.instance
+    final service = GeofenceService.instance.setup(
       interval: 5000,
       accuracy: 100,
       statusChangeActivityType: GeofenceStatusChangeActivityType.ALWAYS,
       allowMockLocations: false,
     );
 
-    GeofencingApi.instance.addGeofence(jobbSone);
-    GeofencingApi.instance.addGeofenceStatusChangeListener((geofence, radius, status, location) {
+    service.addGeofence(jobbSone);
+    
+    service.addGeofenceStatusChangeListener((geofence, radius, status, location) {
       if (status == GeofenceStatus.ENTER) {
         setState(() => _statusTekst = "Velkommen til jobb! Sjekk parkeringen.");
         _sendParkeringsVarsel();
       } else if (status == GeofenceStatus.EXIT) {
         setState(() => _statusTekst = "Du har forlatt parkeringsplassen.");
       }
+    });
+
+    service.start().catchError((e) {
+      setState(() => _statusTekst = "Feil ved oppstart av GPS: $e");
     });
 
     setState(() => _statusTekst = "Overvåker jobb-parkeringen aktivt... (150m sone)");
