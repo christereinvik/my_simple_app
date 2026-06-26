@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:geofencing_api/geofencing_api.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() => runApp(const ParkeringsVarslerApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // <-- Denne må ligge her!
+  runApp(const ParkeringsVarslerApp());
+}
 
 class ParkeringsVarslerApp extends StatelessWidget {
   const ParkeringsVarslerApp({super.key});
@@ -25,9 +28,9 @@ class GeofenceSkjerm extends StatefulWidget {
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   String _statusTekst = "Søker etter GPS-signal...";
 
-  // 🔴 BYTT UT DISSE TO TALLENE MED DINE FRA GOOGLE MAPS:
-  final double jobbLatitude = 69.6815;  // <-- Ditt første tall her (Breddegrad)
-  final double jobbLongitude = 18.9725; // <-- Ditt andre tall her (Lengdegrad)
+  // Legg inn koordinatene til jobb-parkeringen din her:
+  final double jobbLatitude = 69.6815; 
+  final double jobbLongitude = 18.9725;
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -47,7 +50,8 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   }
 
   void _startGeofencing() async {
-    bool tillatelseGitt = await GeofencingApi.instance.requestLocationPermission();
+    // Bruker den globale instansen direkte for å unngå manglende getter-feil i skyen
+    bool tillatelseGitt = await geofencingApi.requestLocationPermission();
     if (!tillatelseGitt) {
       setState(() => _statusTekst = "Appen må ha tilgang til posisjon i innstillinger.");
       return;
@@ -57,10 +61,10 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       id: 'jobb_parkeringsplass',
       latitude: jobbLatitude,
       longitude: jobbLongitude,
-      radius: 150.0, // Varsler deg innenfor 150 meter fra punktet
+      radius: 150.0,
     );
 
-    GeofencingApi.instance.setup(
+    geofencingApi.setup(
       geofences: [jobbSone],
       onStatusChanged: (geofence, status) {
         if (status == GeofenceStatus.enter) {
@@ -75,18 +79,17 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
     setState(() => _statusTekst = "Overvåker jobb-parkeringen aktivt... (150m sone)");
   }
 
-void _sendParkeringsVarsel() async {
-  const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
-  const notificationDetails = NotificationDetails(iOS: iosDetails);
-
-  await _notificationsPlugin.show(
-    id: 0,
-    title: 'Husk parkering! 🚗',
-    body: 'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
-    notificationDetails: notificationDetails
-  );
-}
-
+  void _sendParkeringsVarsel() async {
+    const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
+    const notificationDetails = NotificationDetails(iOS: iosDetails);
+    
+    await _notificationsPlugin.show(
+      id: 0,
+      title: 'Husk parkering! 🚗',
+      body: 'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
+      notificationDetails: notificationDetails,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
