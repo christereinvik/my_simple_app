@@ -32,29 +32,20 @@ jobs:
           flutter precache --ios
           flutter pub get
           
-          # Sletter Windows-Podfilen slik at den ikke lager krøll
+          # Sletter Windows-Podfilen
           rm -f ios/Podfile
           
-          # Tvinger Flutter til å generere en helt ren og riktig iOS-mappe/Podfile for Mac
+          # Genererer en ren, offisiell og feilfri iOS-mappe
           flutter create . --platforms=ios
           
           cd ios
-          # Legger inn GPS-tillatelsen i den nygenererte Podfilen automatisk via terminalen
-          echo "post_install do |installer|
-            installer.pods_project.targets.each do |target|
-              flutter_additional_ios_build_settings(target)
-              target.build_configurations.each do |config|
-                config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['\$(inherited)', 'PERMISSION_LOCATION=1']
-              end
-            end
-          end" >> Podfile
-          
           pod repo update
           pod install
           cd ..
           
-          # Bygger for simulator uten krav til kodesignering
+          # Bygger appen for simulator uten kodesignering
           flutter build ios --simulator --no-codesign
+
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
