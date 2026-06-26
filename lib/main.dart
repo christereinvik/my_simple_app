@@ -28,7 +28,7 @@ class GeofenceSkjerm extends StatefulWidget {
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   String _statusTekst = "Søker etter GPS-signal...";
 
-  // Koordinater (Satt til UiT i Tromsø)
+  // Dine nøyaktige jobbkoordinater
   final double jobbLatitude = 69.6815; 
   final double jobbLongitude = 18.9725;
 
@@ -50,32 +50,38 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   }
 
   void _startGeofencing() async {
-    bool tillatelseGitt = await Geofencing.instance.requestLocationPermission();
-    if (!tillatelseGitt) {
+    // 1. Sjekk tillatelse (Siden det ikke returnerer en bool, sjekker vi om vi har tilgang)
+    final permission = await GeofencingApi.instance.requestLocationPermission();
+    if (!permission) {
       setState(() => _statusTekst = "Appen må ha tilgang til posisjon i innstillinger.");
       return;
     }
 
-    // Fikset: Pakken krever 'GeofenceRegion' i stedet for 'Geofence'
-    final jobbSone = GeofenceRegion(
+    // 2. Opprett sonen (Vi bruker 'Geofence' direkte med radius slik pakken vil ha det)
+    final jobbSone = Geofence(
       id: 'jobb_parkeringsplass',
       latitude: jobbLatitude,
       longitude: jobbLongitude,
-      radius: 150.0,
+      radius: [GeofenceRadius(id: 'radius_150m', length: 150.0)],
     );
 
-    // Fikset: Bruker 'regions' i stedet for 'geofences'
-    Geofencing.instance.setup(
-      regions: [jobbSone],
-      onStatusChanged: (geofence, status) {
-        if (status == GeofenceStatus.enter) {
-          setState(() => _statusTekst = "Velkommen til jobb! Sjekk parkeringen.");
-          _sendParkeringsVarsel();
-        } else if (status == GeofenceStatus.exit) {
-          setState(() => _statusTekst = "Du har forlatt parkeringsplassen.");
-        }
-      },
+    // 3. Start lytteren (Parameteren heter 'geofences')
+    GeofencingApi.instance.setup(
+      interval: 5000,
+      accuracy: 100,
+      statusChangeActivityType: GeofenceStatusChangeActivityType.ALWAYS,
+      allowMockLocations: false,
     );
+
+    GeofencingApi.instance.addGeofence(jobbSone);
+    GeofencingApi.instance.addGeofenceStatusChangeListener((geofence, radius, status, location) {
+      if (status == GeofenceStatus.ENTER) {
+        setState(() => _statusTekst = "Velkommen til jobb! Sjekk parkeringen.");
+        _sendParkeringsVarsel();
+      } else if (status == GeofenceStatus.EXIT) {
+        setState(() => _statusTekst = "Du har forlatt parkeringsplassen.");
+      }
+    });
 
     setState(() => _statusTekst = "Overvåker jobb-parkeringen aktivt... (150m sone)");
   }
