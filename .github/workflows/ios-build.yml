@@ -31,24 +31,17 @@ jobs:
         run: |
           flutter precache --ios
           flutter pub get
-          
-          # Sletter Windows-Podfilen
-          rm -f ios/Podfile
-          
-          # Genererer en ren, offisiell og feilfri iOS-mappe
-          flutter create . --platforms=ios
-          
           cd ios
           pod repo update
           pod install
           cd ..
-          
-          # Bygger appen for simulator uten kodesignering
-          flutter build ios --simulator --no-codesign
-
+          # Vi endrer 'ios' til 'ipa' og beholder no-codesign for Sideloadly
+          flutter build ipa --no-codesign
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-output
-          path: build/ios/archive.xcarchive/Products/Applications/Runner.app
+          # Banen til den usignerte .ipa-filen
+          path: build/ios/ipa/*.ipa
+
