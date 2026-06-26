@@ -3,7 +3,6 @@ import 'package:geofencing_api/geofencing_api.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
-  // Sikrer at Flutter-motoren og system-bindings er startet før vi henter GPS/varslinger
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ParkeringsVarslerApp());
 }
@@ -29,7 +28,7 @@ class GeofenceSkjerm extends StatefulWidget {
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   String _statusTekst = "Søker etter GPS-signal...";
 
-  // Dine nøyaktige jobb-koordinater (Satt til UiT i Tromsø som eksempel)
+  // Koordinater (Satt til UiT i Tromsø)
   final double jobbLatitude = 69.6815; 
   final double jobbLongitude = 18.9725;
 
@@ -42,7 +41,6 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
     _startGeofencing();
   }
 
-  // Initialiserer varslingssystemet på iOS/iPhone
   void _initVarslinger() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings();
@@ -51,33 +49,29 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
     );
   }
 
-  // Starter overvåkingen av parkeringsplassen
   void _startGeofencing() async {
-    // Ber iPhonen om posisjonstilgang via riktig klasse (Geofencing.instance)
     bool tillatelseGitt = await Geofencing.instance.requestLocationPermission();
     if (!tillatelseGitt) {
       setState(() => _statusTekst = "Appen må ha tilgang til posisjon i innstillinger.");
       return;
     }
 
-    // Oppretter den digitale sirkelen (150 meter radius) rundt parkeringen din
-    final jobbSone = Geofence(
+    // Fikset: Pakken krever 'GeofenceRegion' i stedet for 'Geofence'
+    final jobbSone = GeofenceRegion(
       id: 'jobb_parkeringsplass',
       latitude: jobbLatitude,
       longitude: jobbLongitude,
       radius: 150.0,
     );
 
-    // Starter lytteren som passer på om du kjører inn eller ut av sonen
+    // Fikset: Bruker 'regions' i stedet for 'geofences'
     Geofencing.instance.setup(
-      geofences: [jobbSone],
+      regions: [jobbSone],
       onStatusChanged: (geofence, status) {
         if (status == GeofenceStatus.enter) {
-          // AKTIVERES NÅR DU ANKOMMER PARKERINGEN
           setState(() => _statusTekst = "Velkommen til jobb! Sjekk parkeringen.");
           _sendParkeringsVarsel();
         } else if (status == GeofenceStatus.exit) {
-          // AKTIVERES NÅR DU REISER FRA JOBB
           setState(() => _statusTekst = "Du har forlatt parkeringsplassen.");
         }
       },
@@ -86,7 +80,6 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
     setState(() => _statusTekst = "Overvåker jobb-parkeringen aktivt... (150m sone)");
   }
 
-  // Sender det synlige push-varselet til iPhonen din med oppdaterte parametere
   void _sendParkeringsVarsel() async {
     const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
     const notificationDetails = NotificationDetails(iOS: iosDetails);
