@@ -43,14 +43,22 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
 
   void _initVarslinger() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings();
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    
     await _notificationsPlugin.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
+
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   void _startGeofencing() async {
-    // Definerer sonen med Geofence og GeofenceRadius slik pakken krever
     final jobbSone = Geofence(
       id: 'jobb_parkeringsplass',
       latitude: jobbLatitude,
@@ -58,11 +66,10 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       radius: [GeofenceRadius(id: 'radius_150m', length: 150.0)],
     );
 
-    // Initialiserer overvåkingen via GeofenceService.instance
+    // Initialiserer overvåkingen (statusChangeActivityType fjernet for v6.0.0+)
     final service = GeofenceService.instance.setup(
       interval: 5000,
       accuracy: 100,
-      statusChangeActivityType: GeofenceStatusChangeActivityType.ALWAYS,
       allowMockLocations: false,
     );
 
@@ -85,14 +92,21 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   }
 
   void _sendParkeringsVarsel() async {
+    const androidDetails = AndroidNotificationDetails(
+      'parking_channel',
+      'Parking Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
     const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
-    const notificationDetails = NotificationDetails(iOS: iosDetails);
+    const notificationDetails = NotificationDetails(android: androidDetails, iOS: iosDetails);
     
+    // Oppdatert til 4 påkrevde posisjonelle argumenter (id, title, body, notificationDetails)
     await _notificationsPlugin.show(
-      id: 0,
-      title: 'Husk parkering! 🚗',
-      body: 'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
-      notificationDetails: notificationDetails,
+      0,
+      'Husk parkering! 🚗',
+      'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
+      notificationDetails,
     );
   }
 
