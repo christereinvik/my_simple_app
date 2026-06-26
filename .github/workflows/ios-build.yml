@@ -30,8 +30,12 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build iOS App Bundle
-        run: flutter build ios --simulator --no-codesign
+        - name: Build iOS App Bundle
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build ios --simulator --no-codesign
+
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
