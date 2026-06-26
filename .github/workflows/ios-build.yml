@@ -34,6 +34,7 @@ jobs:
         run: |
           flutter clean
           flutter pub get
+          cd ios && pod repo update && pod install && cd ..
           flutter build ios --simulator --no-codesign
 
       - name: Upload Build Artifacts
