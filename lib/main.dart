@@ -75,7 +75,8 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
 
     service.addGeofence(jobbSone);
     
-    service.addGeofenceStatusChangeListener((geofence, radius, status, location) {
+    service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
+
       if (status == GeofenceStatus.ENTER) {
         setState(() => _statusTekst = "Velkommen til jobb! Sjekk parkeringen.");
         _sendParkeringsVarsel();
