@@ -3,7 +3,7 @@ import 'package:geofencing_api/geofencing_api.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // <-- Denne må ligge her!
+  WidgetsFlutterBinding.ensureInitialized(); // Sikrer stabil oppstart av hardware-systemer
   runApp(const ParkeringsVarslerApp());
 }
 
@@ -28,7 +28,7 @@ class GeofenceSkjerm extends StatefulWidget {
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   String _statusTekst = "Søker etter GPS-signal...";
 
-  // Legg inn koordinatene til jobb-parkeringen din her:
+  // Dine nøyaktige jobb-koordinater:
   final double jobbLatitude = 69.6815; 
   final double jobbLongitude = 18.9725;
 
@@ -50,8 +50,8 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   }
 
   void _startGeofencing() async {
-    // Bruker den globale instansen direkte for å unngå manglende getter-feil i skyen
-    bool tillatelseGitt = await geofencingApi.requestLocationPermission();
+    // Fikset: Henter tillatelse via den offisielle klasse-instansen (Stor G)
+    bool tillatelseGitt = await GeofencingApi.instance.requestLocationPermission();
     if (!tillatelseGitt) {
       setState(() => _statusTekst = "Appen må ha tilgang til posisjon i innstillinger.");
       return;
@@ -64,7 +64,8 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       radius: 150.0,
     );
 
-    geofencingApi.setup(
+    // Fikset: Setter opp overvåking via den offisielle klasse-instansen (Stor G)
+    GeofencingApi.instance.setup(
       geofences: [jobbSone],
       onStatusChanged: (geofence, status) {
         if (status == GeofenceStatus.enter) {
@@ -86,7 +87,7 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
     await _notificationsPlugin.show(
       id: 0,
       title: 'Husk parkering! 🚗',
-      body: 'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
+      body: 'Du har ankommet jobb-parkeringen. Husk å registrar eller betale!',
       notificationDetails: notificationDetails,
     );
   }
