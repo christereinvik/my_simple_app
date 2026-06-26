@@ -28,11 +28,10 @@ jobs:
           channel: 'stable'
 
       - name: Build iOS App Bundle
-        run: flutter precache --ios; flutter pub get; cd ios; pod repo update; pod install; cd ..; flutter build ios --no-codesign
-
+        run: flutter precache --ios; flutter pub get; cd ios; pod repo update; pod install; cd ..; flutter build ios --config-only; xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO METHOD=development PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-output
-          path: build/ios/iphoneos
+          path: build/ios/archive.xcarchive/Products/Applications/Runner.app
