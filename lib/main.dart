@@ -1,81 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:geofencing_api/geofencing_api.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-// The main entry point of the application
-void main() {
-  runApp(const MySimpleApp());
-}
+void main() => runApp(const ParkeringsVarslerApp());
 
-// Root widget configuring the application theme and initial screen
-class MySimpleApp extends StatelessWidget {
-  const MySimpleApp({super.key});
+class ParkeringsVarslerApp extends StatelessWidget {
+  const ParkeringsVarslerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Simple Flutter App',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        useMaterial3: true, // Uses the modern Material 3 design system
-      ),
-      home: const HomeScreen(),
+    return const MaterialApp(
+      home: GeofenceSkjerm(),
     );
   }
 }
 
-// Stateful widget representing the interactive home screen
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class GeofenceSkjerm extends StatefulWidget {
+  const GeofenceSkjerm({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<GeofenceSkjerm> createState() => _GeofenceSkjermState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // Application state variable tracking button presses
-  int _counter = 0;
+class _GeofenceSkjermState extends State<GeofenceSkjerm> {
+  String _statusTekst = "Søker etter GPS-signal...";
 
-  // Function to increment the state value safely
-  void _incrementCounter() {
-    setState(() {
-      _counter++; // Tells Flutter to redraw the UI with the updated value
-    });
+  // 🔴 BYTT UT DISSE TO TALLENE MED DINE FRA GOOGLE MAPS:
+  final double jobbLatitude = 69.6815;  // <-- Ditt første tall her (Breddegrad)
+  final double jobbLongitude = 18.9725; // <-- Ditt andre tall her (Lengdegrad)
+
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  @override
+  void initState() {
+    super.initState();
+    _initVarslinger();
+    _startGeofencing();
+  }
+
+  void _initVarslinger() async {
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings();
+    await _notificationsPlugin.initialize(
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
+    );
+  }
+
+  void _startGeofencing() async {
+    bool tillatelseGitt = await GeofencingApi.instance.requestLocationPermission();
+    if (!tillatelseGitt) {
+      setState(() => _statusTekst = "Appen må ha tilgang til posisjon i innstillinger.");
+      return;
+    }
+
+    final jobbSone = Geofence(
+      id: 'jobb_parkeringsplass',
+      latitude: jobbLatitude,
+      longitude: jobbLongitude,
+      radius: 150.0, // Varsler deg innenfor 150 meter fra punktet
+    );
+
+    GeofencingApi.instance.setup(
+      geofences: [jobbSone],
+      onStatusChanged: (geofence, status) {
+        if (status == GeofenceStatus.enter) {
+          setState(() => _statusTekst = "Velkommen til jobb! Sjekk parkeringen.");
+          _sendParkeringsVarsel();
+        } else if (status == GeofenceStatus.exit) {
+          setState(() => _statusTekst = "Du har forlatt parkeringsplassen.");
+        }
+      },
+    );
+
+    setState(() => _statusTekst = "Overvåker jobb-parkeringen aktivt... (150m sone)");
+  }
+
+  void _sendParkeringsVarsel() async {
+    const iosDetails = DarwinNotificationDetails(presentAlert: true, presentSound: true);
+    const notificationDetails = NotificationDetails(iOS: iosDetails);
+    
+    await _notificationsPlugin.show(
+      0,
+      'Husk parkering! 🚗',
+      'Du har ankommet jobb-parkeringen. Husk å registrere eller betale!',
+      notificationDetails,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Top header bar
       appBar: AppBar(
-        title: const Text('My First iPhone App!'),
-        backgroundColor: Colors.blue,
-        foregroundColor: const Color.fromARGB(255, 138, 15, 15),
+        title: const Text('Parkeringsassistent'), 
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
       ),
-      // Main interface body layout
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-              style: TextStyle(fontSize: 16),
-            ),
-            Text(
-              '$_counter', // Dynamic text displaying our state counter
-              style: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.local_parking, size: 100, color: Colors.blueAccent),
+              const SizedBox(height: 24),
+              Text(
+                _statusTekst,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      // Floating button in the bottom right corner
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
