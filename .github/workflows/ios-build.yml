@@ -34,6 +34,7 @@ jobs:
       - name: Build iOS App Bundle
         run: |
           flutter clean
+          flutter precache --ios
           flutter pub get
           cd ios && pod repo update && pod install && cd ..
           flutter build ios --simulator --no-codesign
