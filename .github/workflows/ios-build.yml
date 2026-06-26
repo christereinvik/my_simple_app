@@ -35,13 +35,13 @@ jobs:
           pod repo update
           pod install
           cd ..
-          # Vi endrer 'ios' til 'ipa' og beholder no-codesign for Sideloadly
           flutter build ipa --no-codesign
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-output
-          # Banen til den usignerte .ipa-filen
-          path: build/ios/ipa/*.ipa
+          # Vi endrer banen til app-pakken inni arkivet:
+          path: build/ios/archive.xcarchive/Products/Applications/
+
 
