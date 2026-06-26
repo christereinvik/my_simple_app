@@ -31,10 +31,10 @@ jobs:
         run: flutter pub get
 
       - name: Build iOS App Bundle
-        run: flutter build ios --no-codesign --release
+        run: flutter build ios --simulator --no-codesign
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-output
-          path: build/ios/iphoneos
+          path: build/ios/simulator
