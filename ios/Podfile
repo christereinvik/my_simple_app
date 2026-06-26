@@ -1,7 +1,7 @@
 platform :ios, '13.0'
 
 # Henter Flutter-oppsettet automatisk
-import '../../flutter/packages/flutter_tools/bin/xcode_backend.rb'
+require '../../flutter/packages/flutter_tools/bin/xcode_backend.rb'
 
 target 'Runner' do
   use_frameworks!
