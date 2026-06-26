@@ -66,16 +66,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-
-	<!-- Personvern og Tillatelser for GPS-lokasjon -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs your location to detect when you arrive at the work parking lot.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs background location access to alert you upon arrival at work even when your phone is locked.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs background location access to alert you upon arrival at work even when your phone is locked.</string>
-
-	<!-- Bakgrunnsmoduser for både posisjonering og varsler -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
@@ -83,4 +79,3 @@
 	</array>
 </dict>
 </plist>
-
