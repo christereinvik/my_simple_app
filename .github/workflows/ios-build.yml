@@ -27,7 +27,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Unsigned iOS IPA
+      - name: Build Unsigned iOS Release
         run: |
           flutter precache --ios
           flutter pub get
@@ -35,16 +35,12 @@ jobs:
           pod repo update
           pod install
           cd ..
-          flutter build ipa --no-codesign --export-method=development
-
+          # Bruker den ukompilerte release-kommandoen som alltid godtas uten sertifikater:
+          flutter build ios --release --no-codesign
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa-output
-          # Ny bombesikker bane for ukompilerte app-filer beregnet på fysiske enheter:
-          path: build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app/
-
-
-
-
+          # Ny og bombesikker bane for rene fysiske release-filer:
+          path: build/ios/iphoneos/Runner.app/
