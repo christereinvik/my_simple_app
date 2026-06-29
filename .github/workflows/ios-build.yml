@@ -1,4 +1,4 @@
-name: Flutter iOS Debug Build
+name: Flutter iOS Release Build for Sideloadly
 
 on:
   push:
@@ -27,18 +27,28 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Unsigned iOS Debug
+      - name: Build Unsigned iOS Release
         run: |
           flutter pub get
           cd ios
           pod repo update
           pod install
           cd ..
-          # Nøkkelen til suksess: debug-kommandoen krever ALDRI utviklerteam eller Apple-sertifikater
-          flutter build ios --debug --no-codesign
+          # Bygger i Release-modus i stedet for Debug, slik at appen kan åpnes på iOS 14+
+          flutter build ios --release --no-codesign
 
-      - name: Upload Build Artifacts
+      - name: Package IPA for Sideloadly
+        run: |
+          # Oppretter den påkrevde Payload-mappestrukturen for iOS-apper
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          # Zipper det sammen til en ferdig .ipa-fil i rotmappen
+          zip -r ../../Runner.ipa Payload
+
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa-output
-          path: build/ios/iphoneos/Runner.app/
+          name: ios-release-ipa
+          path: build/Runner.ipa
+
