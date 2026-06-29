@@ -62,18 +62,6 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   
   // Oppdatert knappefunksjon som ber om tillatelse FØR GPS-en starter
     void _startGeofencing() async {
-    geo.LocationPermission permission = await geo.Geolocator.checkPermission();
-    
-    if (permission == geo.LocationPermission.denied) {
-      permission = await geo.Geolocator.requestPermission();
-      if (permission == geo.LocationPermission.denied) {
-        setState(() {
-          _statusTekstGlobal = "Tilgang avvist av bruker.";
-        });
-        return;
-      }
-    }
-
     bool alleredeAktiv = await GeofenceService.instance.isRunningService;
     
     if (alleredeAktiv) {
