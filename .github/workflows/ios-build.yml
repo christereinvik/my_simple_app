@@ -27,7 +27,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build iOS App Bundle
+      - name: Build Unsigned iOS IPA
         run: |
           flutter precache --ios
           flutter pub get
@@ -35,15 +35,16 @@ jobs:
           pod repo update
           pod install
           cd ..
-          # Vi bygger en ren simulator-app, som alltid legger seg på en fast bane
-          flutter build ios --simulator --no-codesign
+          # Endret fra --simulator til å bygge et rent usignert ipa-arkiv
+          flutter build ipa --no-codesign
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-output
-          # Denne banen er bombesikker i Flutter for simulator-bygg:
-          path: build/ios/iphonesimulator/Runner.app/
+          name: ios-ipa-output
+          # Ny bombesikker bane for ukompilerte app-filer beregnet på fysiske enheter:
+          path: build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app/
+
 
 
 
