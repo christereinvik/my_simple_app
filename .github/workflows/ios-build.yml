@@ -35,7 +35,7 @@ jobs:
           pod repo update
           pod install
           cd ..
-          flutter build ipa --no-codesign
+          flutter build ipa --no-codesign --export-method=development
 
 
       - name: Upload Build Artifacts
