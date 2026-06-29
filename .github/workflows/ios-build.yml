@@ -6,11 +6,20 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest # Vi bygger på en lynrask, gratis Linux-server i stedet for Mac
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
@@ -32,8 +41,11 @@ jobs:
           flutter pub get
           flutter build web --base-href "/my_simple_app/"
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Upload Web Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          folder: build/web
-          branch: gh-pages # Skyver filene til en egen nettside-gren automatisk
+          path: build/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
