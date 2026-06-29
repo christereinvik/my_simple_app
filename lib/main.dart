@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:geofence_service/geofence_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:geolocator/geolocator.dart'; // Lagt til for sikker sjekk av tillatelse
 
-// 1. Initialiser variabler globalt slik at både main og skjermen har tilgang
-final double jobbLatitude = 59.9139;  // Bytt ut med dine faktiske koordinater
-final double jobbLongitude = 10.7522; // Bytt ut med dine faktiske koordinater
+// Sett inn koordinatene til jobben din her
+final double jobbLatitude = 59.9139;  
+final double jobbLongitude = 10.7522; 
 String _statusTekstGlobal = "Venter på GPS...";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Definer geofence-sonen globalt under oppstart
+  // Definer geofence-sonen
   final jobbSone = Geofence(
     id: 'jobb_parkeringsplass',
     latitude: jobbLatitude,
@@ -18,20 +19,19 @@ void main() async {
     radius: [GeofenceRadius(id: 'radius_150m', length: 150.0)],
   );
 
-  // 3. Konfigurer tjenesten på globalt nivå (Dette hindrer iOS-krasj)
+  // KONFIGURASJON FOR GRATIS-KONTO: useActivityRecognition er satt til false
   final service = GeofenceService.instance.setup(
     interval: 5000,
     accuracy: 100,
     allowMockLocations: false,
+    useActivityRecognition: false, 
   );
 
-  // 4. Legg til sonen og lytteren med én gang
   service.addGeofence(jobbSone);
   
   service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
     if (status == GeofenceStatus.ENTER) {
       _statusTekstGlobal = "Velkommen til jobb! Sjekk parkeringen.";
-      // Kalle varslingsmetoden din her (Må gjøres statisk/global)
     } else if (status == GeofenceStatus.EXIT) {
       _statusTekstGlobal = "Du har forlatt parkeringsplassen.";
     }
@@ -51,7 +51,6 @@ class ParkeringsVarslerApp extends StatelessWidget {
   }
 }
 
-// --- DIN SKJERM-KLASSE ---
 class GeofenceSkjerm extends StatefulWidget {
   const GeofenceSkjerm({super.key});
   @override
@@ -59,9 +58,24 @@ class GeofenceSkjerm extends StatefulWidget {
 }
 
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
-  // Knappen din på skjermen trenger nå BARE å trigge selve starten av tjenesten
+  
+  // Oppdatert knappefunksjon som ber om tillatelse FØR GPS-en starter
   void _startGeofencing() async {
-    GeofenceService.instance.start().catchError((e) {
+    LocationPermission permission = await Geolocator.checkPermission();
+    
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() { _statusTekstGlobal = "Tilgang avvist av bruker."; });
+        return;
+      }
+    }
+
+    GeofenceService.instance.start().then((_) {
+      setState(() {
+        _statusTekstGlobal = "Overvåkning startet aktivt!";
+      });
+    }).catchError((e) {
       setState(() {
         _statusTekstGlobal = "Feil ved oppstart av GPS: $e";
       });
@@ -76,9 +90,10 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(_statusTekstGlobal),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _startGeofencing,
-              child: const Text("Start overvåking"),
+              child: const Text("Start overvåkning"),
             ),
           ],
         ),
