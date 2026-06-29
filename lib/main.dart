@@ -77,6 +77,14 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       }
     }
 
+       // Sjekk om tjenesten allerede kjører før vi kaller start()
+    bool alleredeAktiv = await GeofenceService.instance.isRunningService;
+    
+    if (alleredeAktiv) {
+      setState(() {
+        _statusTekstGlobal = "Overvåkning er allerede aktiv og lytter!";
+      });
+     } else {
     GeofenceService.instance.start().then((_) {
       setState(() {
         _statusTekstGlobal = "Overvåkning startet aktivt!";
@@ -87,6 +95,7 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       });
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
