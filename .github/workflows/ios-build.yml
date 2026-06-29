@@ -1,16 +1,16 @@
-name: Flutter iOS Build
+name: Deploy Flutter Web to GitHub Pages
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+
+permissions:
+  contents: write
 
 jobs:
-  build-ios:
-    runs-on: macos-14
+  build-and-deploy:
+    runs-on: ubuntu-latest # Vi bygger på en lynrask, gratis Linux-server i stedet for Mac
 
     steps:
       - name: Checkout Repository
@@ -27,19 +27,13 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build iOS App Bundle
+      - name: Build Flutter Web
         run: |
-          flutter precache --ios
           flutter pub get
-          cd ios
-          pod repo update
-          pod install
-          cd ..
-          # Bruker simulator-bygget som Xcode ALLTID godtar uten sertifikater
-          flutter build ios --simulator --no-codesign
+          flutter build web --base-href "/my_simple_app/"
 
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          name: ios-ipa-output
-          path: build/ios/iphonesimulator/Runner.app/
+          folder: build/web
+          branch: gh-pages # Skyver filene til en egen nettside-gren automatisk
