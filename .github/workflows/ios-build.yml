@@ -36,7 +36,8 @@ jobs:
           pod install
           cd ..
           # Endret fra --simulator til å bygge et rent usignert ipa-arkiv
-          flutter build ipa --no-codesign
+                    flutter build ipa --no-codesign --allow-provisioning-device-registration
+
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
