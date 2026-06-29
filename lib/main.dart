@@ -61,41 +61,37 @@ class GeofenceSkjerm extends StatefulWidget {
 class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   
   // Oppdatert knappefunksjon som ber om tillatelse FØR GPS-en starter
-  void _startGeofencing() async {
-    // Linje 65: Lagt til geo. foran LocationPermission og Geolocator
+    void _startGeofencing() async {
     geo.LocationPermission permission = await geo.Geolocator.checkPermission();
     
-    // Linje 67: Lagt til geo. foran LocationPermission
     if (permission == geo.LocationPermission.denied) {
-      // Linje 68: Lagt til geo. foran Geolocator
       permission = await geo.Geolocator.requestPermission();
-      // Linje 69: Lagt til geo. foran LocationPermission
       if (permission == geo.LocationPermission.denied) {
-
-        setState(() { _statusTekstGlobal = "Tilgang avvist av bruker."; });
+        setState(() {
+          _statusTekstGlobal = "Tilgang avvist av bruker.";
+        });
         return;
       }
     }
 
-       // Sjekk om tjenesten allerede kjører før vi kaller start()
     bool alleredeAktiv = await GeofenceService.instance.isRunningService;
     
     if (alleredeAktiv) {
       setState(() {
         _statusTekstGlobal = "Overvåkning er allerede aktiv og lytter!";
       });
-     } else {
-    GeofenceService.instance.start().then((_) {
-      setState(() {
-        _statusTekstGlobal = "Overvåkning startet aktivt!";
+    } else {
+      GeofenceService.instance.start().then((_) {
+        setState(() {
+          _statusTekstGlobal = "Overvåkning startet aktivt!";
+        });
+      }).catchError((e) {
+        setState(() {
+          _statusTekstGlobal = "Feil ved oppstart av GPS: $e";
+        });
       });
-    }).catchError((e) {
-      setState(() {
-        _statusTekstGlobal = "Feil ved oppstart av GPS: $e";
-      });
-    });
+    }
   }
-
 
   @override
   Widget build(BuildContext context) {
