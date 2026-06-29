@@ -4,8 +4,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart'; // Lagt til for sikker sjekk av tillatelse
 
 // Sett inn koordinatene til jobben din her
-final double jobbLatitude = 59.9139;  
-final double jobbLongitude = 10.7522; 
+final double jobbLatitude = 69.684218;  
+final double jobbLongitude = 18.973769; 
 String _statusTekstGlobal = "Venter på GPS...";
 
 void main() async {
