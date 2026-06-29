@@ -1,25 +1,16 @@
-name: Deploy Flutter Web to GitHub Pages
+name: Flutter iOS Debug Build
 
 on:
   push:
     branches:
       - main
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+  build-ios:
+    runs-on: macos-14
 
     steps:
       - name: Checkout Repository
@@ -36,16 +27,18 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Flutter Web
+      - name: Build Unsigned iOS Debug
         run: |
           flutter pub get
-          flutter build web --base-href "/my_simple_app/"
+          cd ios
+          pod repo update
+          pod install
+          cd ..
+          # Nøkkelen til suksess: debug-kommandoen krever ALDRI utviklerteam eller Apple-sertifikater
+          flutter build ios --debug --no-codesign
 
-      - name: Upload Web Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          path: build/web
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          name: ios-ipa-output
+          path: build/ios/iphoneos/Runner.app/
