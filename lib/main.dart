@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geofence_service/geofence_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:geolocator/geolocator.dart'; // Lagt til for sikker sjekk av tillatelse
+import 'package:geolocator/geolocator.dart' as geo;
+
 
 // Sett inn koordinatene til jobben din her
 final double jobbLatitude = 69.684218;  
@@ -61,11 +62,16 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
   
   // Oppdatert knappefunksjon som ber om tillatelse FØR GPS-en starter
   void _startGeofencing() async {
-    LocationPermission permission = await Geolocator.checkPermission();
+    // Linje 65: Lagt til geo. foran LocationPermission og Geolocator
+    geo.LocationPermission permission = await geo.Geolocator.checkPermission();
     
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+    // Linje 67: Lagt til geo. foran LocationPermission
+    if (permission == geo.LocationPermission.denied) {
+      // Linje 68: Lagt til geo. foran Geolocator
+      permission = await geo.Geolocator.requestPermission();
+      // Linje 69: Lagt til geo. foran LocationPermission
+      if (permission == geo.LocationPermission.denied) {
+
         setState(() { _statusTekstGlobal = "Tilgang avvist av bruker."; });
         return;
       }
