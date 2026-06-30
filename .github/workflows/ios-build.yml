@@ -35,13 +35,14 @@ jobs:
           pod install
           cd ..
           # Bygger i Release-modus i stedet for Debug, slik at appen kan åpnes på iOS 14+
-          flutter build ios --release --no-codesign
+          flutter build ios --profile --no-codesign
 
       - name: Package IPA for Sideloadly
         run: |
           # Oppretter den påkrevde Payload-mappestrukturen for iOS-apper
           mkdir -p build/ios/iphoneos/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          # Henter appen fra profile-mappen i stedet for release-mappen
+          cp -r build/ios/profile-iphoneos/Runner.app build/ios/iphoneos/Payload/
           cd build/ios/iphoneos
           # Zipper det sammen til en ferdig .ipa-fil i rotmappen
           zip -r ../../Runner.ipa Payload
