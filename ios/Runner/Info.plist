@@ -72,10 +72,12 @@
 	<string>This app needs background location access to alert you upon arrival at work even when your phone is locked.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs background location access to alert you upon arrival at work even when your phone is locked.</string>
-	<key>UIBackgroundModes</key>
+		<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
 		<string>remote-notification</string>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

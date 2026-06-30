@@ -61,11 +61,11 @@ void main() async {
     radius: [GeofenceRadius(id: 'radius_150m', length: 150.0)],
   );
 
-  final service = GeofenceService.instance.setup(
-    interval: 5000,
+    final service = GeofenceService.instance.setup(
+    interval: 10000, // Sparer batteri
     accuracy: 100,
     allowMockLocations: false,
-    useActivityRecognition: false, 
+    useActivityRecognition: false,
   );
 
   service.addGeofence(jobbSone);
