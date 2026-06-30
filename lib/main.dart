@@ -57,9 +57,11 @@ void main() async {
       if (h.isNotEmpty) {
         final deler = h.first.split('|');
         if (deler.length >= 4 && deler[3] == "1") {
-          h[0] = "${deler[0]}|${deler[1].split(' ').first} - $tidsStempel|${deler[2]}|0";
+          final ankomstTid = deler[1].split(' ').first;
+          h[0] = "${deler[0]}|$ankomstTid - $tidsStempel|${deler[2]}|0";
         }
       }
+      
       if (location != null) {
         await prefs.setDouble('bil_lat', location.latitude);
         await prefs.setDouble('bil_lng', location.longitude);
@@ -136,8 +138,11 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble('bil_lat') ?? jobbLatitude;
     final lng = prefs.getDouble('bil_lng') ?? jobbLongitude;
-    final url = Uri.parse("https://apple.com");
-    if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); }
+    
+    final url = Uri.parse("maps://?q=$lat,$lng");
+    if (await canLaunchUrl(url)) { 
+      await launchUrl(url, mode: LaunchMode.externalApplication); 
+    }
   }
 
   Widget _byggEkteHistorikkKort(String data) {
