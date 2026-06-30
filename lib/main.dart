@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:geofence_service/geofence_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -7,12 +9,102 @@ import 'package:url_launcher/url_launcher.dart';
 
 const double jobbLatitude = 69.684218;
 const double jobbLongitude = 18.973769;
+const String historikkKey = 'parkering_historikk';
+const String arkivKey = 'parkering_historikk_arkiv';
 
 final ValueNotifier<bool> erParkertGlobal = ValueNotifier<bool>(false);
 final ValueNotifier<String> parkeringStartetTid = ValueNotifier<String>("--:--");
-final ValueNotifier<List<String>> historikkListeGlobal = ValueNotifier<List<String>>([]);
+final ValueNotifier<List<ParkeringHistorikk>> historikkListeGlobal = ValueNotifier<List<ParkeringHistorikk>>([]);
 final ValueNotifier<bool> geofenceKjorerGlobal = ValueNotifier<bool>(false);
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+class ParkeringHistorikk {
+  final String dato;
+  final String startTid;
+  final String stoppTid;
+  final String sted;
+  final bool aktiv;
+  final bool arkivert;
+
+  const ParkeringHistorikk({
+    required this.dato,
+    required this.startTid,
+    required this.stoppTid,
+    required this.sted,
+    required this.aktiv,
+    this.arkivert = false,
+  });
+
+  factory ParkeringHistorikk.fromMap(Map<String, dynamic> map) {
+    return ParkeringHistorikk(
+      dato: map['dato'] as String? ?? '',
+      startTid: map['startTid'] as String? ?? '',
+      stoppTid: map['stoppTid'] as String? ?? '',
+      sted: map['sted'] as String? ?? '',
+      aktiv: map['aktiv'] as bool? ?? false,
+      arkivert: map['arkivert'] as bool? ?? false,
+    );
+  }
+
+  factory ParkeringHistorikk.fromJson(String jsonString) {
+    final map = jsonDecode(jsonString) as Map<String, dynamic>;
+    return ParkeringHistorikk.fromMap(map);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'dato': dato,
+      'startTid': startTid,
+      'stoppTid': stoppTid,
+      'sted': sted,
+      'aktiv': aktiv,
+      'arkivert': arkivert,
+    };
+  }
+
+  String toJson() => jsonEncode(toMap());
+
+  ParkeringHistorikk copyWith({
+    String? dato,
+    String? startTid,
+    String? stoppTid,
+    String? sted,
+    bool? aktiv,
+    bool? arkivert,
+  }) {
+    return ParkeringHistorikk(
+      dato: dato ?? this.dato,
+      startTid: startTid ?? this.startTid,
+      stoppTid: stoppTid ?? this.stoppTid,
+      sted: sted ?? this.sted,
+      aktiv: aktiv ?? this.aktiv,
+      arkivert: arkivert ?? this.arkivert,
+    );
+  }
+
+  Duration get varighetDuration {
+    if (stoppTid.isEmpty) return Duration.zero;
+    final start = _parseTid(startTid);
+    final stopp = _parseTid(stoppTid);
+    return stopp >= start ? stopp - start : Duration.zero;
+  }
+
+  String get varighetTekst {
+    if (aktiv || stoppTid.isEmpty) return 'Pågår';
+    final d = varighetDuration;
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
+    if (hours > 0) return '${hours}t ${minutes}m';
+    return '$minutes min';
+  }
+
+  static Duration _parseTid(String tid) {
+    final deler = tid.split(':');
+    final h = int.tryParse(deler[0]) ?? 0;
+    final m = deler.length > 1 ? int.tryParse(deler[1]) ?? 0 : 0;
+    return Duration(hours: h, minutes: m);
+  }
+}
 
 Future<void> visPushVarsel(String tittel, String melding) async {
   const AndroidNotificationDetails androidDetaljer = AndroidNotificationDetails(
@@ -76,19 +168,28 @@ void main() async {
       final tidsStempel = "${na.hour.toString().padLeft(2, '0')}:${na.minute.toString().padLeft(2, '0')}";
       final datoStempel = "${na.day}.${na.month}";
       final prefs = await SharedPreferences.getInstance();
-      List<String> h = prefs.getStringList('parkering_historikk') ?? [];
+      final raw = prefs.getStringList(historikkKey) ?? [];
+      final historikk = raw.map(ParkeringHistorikk.fromJson).toList();
 
       if (status == GeofenceStatus.ENTER) {
         erParkertGlobal.value = true;
         parkeringStartetTid.value = tidsStempel;
         geofenceKjorerGlobal.value = true;
 
-      await prefs.setDouble('bil_lat', location.latitude);
-      await prefs.setDouble('bil_lng', location.longitude);
+        await prefs.setDouble('bil_lat', location.latitude);
+        await prefs.setDouble('bil_lng', location.longitude);
 
-        h.insert(0, "$datoStempel|$tidsStempel - Aktiv|Jobb|1");
-        await prefs.setStringList('parkering_historikk', h);
-        historikkListeGlobal.value = h;
+        final nyPost = ParkeringHistorikk(
+          dato: datoStempel,
+          startTid: tidsStempel,
+          stoppTid: '',
+          sted: 'Jobb',
+          aktiv: true,
+        );
+        historikk.insert(0, nyPost);
+
+        await prefs.setStringList(historikkKey, historikk.map((e) => e.toJson()).toList());
+        historikkListeGlobal.value = List.from(historikk);
 
         await visPushVarsel(
           "🚨 PARKERING STARTET",
@@ -96,16 +197,16 @@ void main() async {
         );
       } else if (status == GeofenceStatus.EXIT) {
         erParkertGlobal.value = false;
-
-        if (h.isNotEmpty) {
-          final deler = h.first.split('|');
-          if (deler.length >= 4 && deler[3] == "1") {
-            h[0] = "${deler[0]}|${deler[1].split(' ').first} - $tidsStempel|${deler[2]}|0";
-          }
+        final aktivIndex = historikk.indexWhere((element) => element.aktiv);
+        if (aktivIndex != -1) {
+          historikk[aktivIndex] = historikk[aktivIndex].copyWith(
+            stoppTid: tidsStempel,
+            aktiv: false,
+          );
         }
 
-        await prefs.setStringList('parkering_historikk', h);
-        historikkListeGlobal.value = h;
+        await prefs.setStringList(historikkKey, historikk.map((e) => e.toJson()).toList());
+        historikkListeGlobal.value = List.from(historikk);
 
         await visPushVarsel(
           "🚙 PARKERING AVSLUTTET",
@@ -161,9 +262,16 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     _lastLagretData();
   }
 
+  Future<void> _lagreHistorikkListe(List<ParkeringHistorikk> liste) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(historikkKey, liste.map((e) => e.toJson()).toList());
+    historikkListeGlobal.value = List.from(liste);
+  }
+
   void _lastLagretData() async {
     final prefs = await SharedPreferences.getInstance();
-    historikkListeGlobal.value = prefs.getStringList('parkering_historikk') ?? [];
+    final raw = prefs.getStringList(historikkKey) ?? [];
+    historikkListeGlobal.value = raw.map(ParkeringHistorikk.fromJson).toList();
   }
 
   void _sjekkOmTjenesteKjorer() async {
@@ -207,6 +315,41 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     await visPushVarsel("🔕 OVERVÅKNING STOPPET", "Geofence-tjenesten er stoppet.");
   }
 
+  Future<void> _tomHistorikk() async {
+    final bekreft = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tøm historikk'),
+          content: const Text('Vil du fjerne alle parkeringslogger?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Avbryt')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Tøm')),
+          ],
+        );
+      },
+    );
+
+    if (bekreft != true) return;
+    await _lagreHistorikkListe([]);
+    await visPushVarsel("🧹 Historikk tømt", "Alle parkeringslogger er fjernet.");
+  }
+
+  Future<void> _arkiverFullforte() async {
+    final prefs = await SharedPreferences.getInstance();
+    final arkivRaw = prefs.getStringList(arkivKey) ?? [];
+    final arkivert = arkivRaw.map(ParkeringHistorikk.fromJson).toList();
+
+    final aktive = historikkListeGlobal.value.where((e) => e.aktiv).toList();
+    final fullforte = historikkListeGlobal.value.where((e) => !e.aktiv).toList();
+    if (fullforte.isEmpty) return;
+
+    arkivert.insertAll(0, fullforte);
+    await prefs.setStringList(arkivKey, arkivert.map((e) => e.toJson()).toList());
+    await _lagreHistorikkListe(aktive);
+    await visPushVarsel("🗄️ Historikk arkivert", "Fullførte parkeringsøkter er flyttet til arkiv.");
+  }
+
   void _finnBilenKart() async {
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble('bil_lat') ?? jobbLatitude;
@@ -221,10 +364,7 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     }
   }
 
-  Widget _byggEkteHistorikkKort(String data) {
-    final deler = data.split('|');
-    if (deler.length < 3) return const SizedBox();
-    final aktiv = deler.length == 4 && deler[3] == "1";
+  Widget _byggEkteHistorikkKort(ParkeringHistorikk data) {
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -232,12 +372,20 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: aktiv ? Colors.green.shade100 : Colors.grey.shade200,
-          child: Icon(Icons.local_parking, color: aktiv ? Colors.green : Colors.grey),
+          backgroundColor: data.aktiv ? Colors.green.shade100 : Colors.grey.shade200,
+          child: Icon(Icons.local_parking, color: data.aktiv ? Colors.green : Colors.grey),
         ),
-        title: Text(deler[0], style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(deler[1]),
-        trailing: Text(deler[2], style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+        title: Text(data.dato, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Start: ${data.startTid}"),
+            if (data.stoppTid.isNotEmpty) Text("Stopp: ${data.stoppTid}"),
+            const SizedBox(height: 4),
+            Text("Varighet: ${data.varighetTekst}", style: const TextStyle(fontWeight: FontWeight.w500)),
+          ],
+        ),
+        trailing: Text(data.sted, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
       ),
     );
   }
@@ -342,10 +490,27 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
                   ),
                 ),
                 const SizedBox(height: 35),
-                const Text("Siste parkeringer", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Siste parkeringer", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: _arkiverFullforte,
+                          child: const Text("Arkiver fullførte"),
+                        ),
+                        TextButton(
+                          onPressed: _tomHistorikk,
+                          child: const Text("Tøm historikk"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 Expanded(
-                  child: ValueListenableBuilder(
+                  child: ValueListenableBuilder<List<ParkeringHistorikk>>(
                     valueListenable: historikkListeGlobal,
                     builder: (context, liste, child) {
                       if (liste.isEmpty) {
