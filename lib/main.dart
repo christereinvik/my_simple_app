@@ -5,43 +5,52 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-final double jobbLatitude = 69.684218;  
-final double jobbLongitude = 18.973769; 
+const double jobbLatitude = 69.684218;
+const double jobbLongitude = 18.973769;
 
 final ValueNotifier<bool> erParkertGlobal = ValueNotifier<bool>(false);
 final ValueNotifier<String> parkeringStartetTid = ValueNotifier<String>("--:--");
 final ValueNotifier<List<String>> historikkListeGlobal = ValueNotifier<List<String>>([]);
+final ValueNotifier<bool> geofenceKjorerGlobal = ValueNotifier<bool>(false);
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-// VIKTIG: Denne funksjonen setter nå opp varsler med MAKSIMAL prioritet for iOS
 Future<void> visPushVarsel(String tittel, String melding) async {
-  const DarwinNotificationDetails iosDetaljer = DarwinNotificationDetails(
-    presentAlert: true,       // Viser banner øverst på skjermen
-    presentBadge: true,       // Viser rød prikk på app-ikonet
-    presentSound: true,       // Spiller av standard iOS-varslingslyd
-    interruptionLevel: InterruptionLevel.timeSensitive, // Bryter gjennom fokus/lydløs om tillatt
+  const AndroidNotificationDetails androidDetaljer = AndroidNotificationDetails(
+    'parkering_channel',
+    'Parkering-varsler',
+    channelDescription: 'Varsler om parkering og sonestatus',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
   );
-  
+
+  const DarwinNotificationDetails iosDetaljer = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+    interruptionLevel: InterruptionLevel.timeSensitive,
+  );
+
   await flutterLocalNotificationsPlugin.show(
-    0, 
-    tittel, 
-    melding, 
-    const NotificationDetails(iOS: iosDetaljer)
+    0,
+    tittel,
+    melding,
+    const NotificationDetails(android: androidDetaljer, iOS: iosDetaljer),
   );
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const InitializationSettings initSettings = InitializationSettings(
+    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
     iOS: DarwinInitializationSettings(
-      requestAlertPermission: false, 
-      requestBadgePermission: false, 
-      requestSoundPermission: false
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     ),
   );
   await flutterLocalNotificationsPlugin.initialize(initSettings);
-  
-  // Ber om absolutt alle varslingsrettigheter med en gang
+
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
       ?.requestPermissions(alert: true, badge: true, sound: true, critical: true);
@@ -54,50 +63,69 @@ void main() async {
   );
 
   final service = GeofenceService.instance.setup(
-    interval: 10000, accuracy: 100, allowMockLocations: false, useActivityRecognition: false
+    interval: 10000,
+    accuracy: 100,
+    allowMockLocations: false,
+    useActivityRecognition: false,
   );
   service.addGeofence(jobbSone);
-  
-  service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
-    final na = DateTime.now();
-    final tidsStempel = "${na.hour.toString().padLeft(2, '0')}:${na.minute.toString().padLeft(2, '0')}";
-    final datoStempel = "${na.day}.${na.month}";
-    final prefs = await SharedPreferences.getInstance();
-    List<String> h = prefs.getStringList('parkering_historikk') ?? [];
 
-    if (status == GeofenceStatus.ENTER) {
-      erParkertGlobal.value = true;
-      parkeringStartetTid.value = tidsStempel;
-      h.insert(0, "$datoStempel|$tidsStempel - Aktiv|Jobb|1");
-      await prefs.setStringList('parkering_historikk', h);
-      historikkListeGlobal.value = h;
-      
-      // Tydelig og kraftig ankomstvarsel
-      await visPushVarsel("🚨 PARKERING STARTET", "Du har kjørt inn i sonen! Registrert ankomst kl. $tidsStempel.");
-      
-    } else if (status == GeofenceStatus.EXIT) {
-      erParkertGlobal.value = false;
-      if (h.isNotEmpty) {
-        final deler = h.first.split('|');
-        if (deler.length >= 4 && deler[3] == "1") {
-          h[0] = "${deler[0]}|${deler[1].split(' ').first} - $tidsStempel|${deler[2]}|0";
+  service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
+    try {
+      final na = DateTime.now();
+      final tidsStempel = "${na.hour.toString().padLeft(2, '0')}:${na.minute.toString().padLeft(2, '0')}";
+      final datoStempel = "${na.day}.${na.month}";
+      final prefs = await SharedPreferences.getInstance();
+      List<String> h = prefs.getStringList('parkering_historikk') ?? [];
+
+      if (status == GeofenceStatus.ENTER) {
+        erParkertGlobal.value = true;
+        parkeringStartetTid.value = tidsStempel;
+        geofenceKjorerGlobal.value = true;
+
+      await prefs.setDouble('bil_lat', location.latitude);
+      await prefs.setDouble('bil_lng', location.longitude);
+
+        h.insert(0, "$datoStempel|$tidsStempel - Aktiv|Jobb|1");
+        await prefs.setStringList('parkering_historikk', h);
+        historikkListeGlobal.value = h;
+
+        await visPushVarsel(
+          "🚨 PARKERING STARTET",
+          "Du har kjørt inn i sonen! Registrert ankomst kl. $tidsStempel.",
+        );
+      } else if (status == GeofenceStatus.EXIT) {
+        erParkertGlobal.value = false;
+
+        if (h.isNotEmpty) {
+          final deler = h.first.split('|');
+          if (deler.length >= 4 && deler[3] == "1") {
+            h[0] = "${deler[0]}|${deler[1].split(' ').first} - $tidsStempel|${deler[2]}|0";
+          }
         }
+
+        await prefs.setStringList('parkering_historikk', h);
+        historikkListeGlobal.value = h;
+
+        await visPushVarsel(
+          "🚙 PARKERING AVSLUTTET",
+          "Du har forlatt sonen. Overvåkning deaktiveres nå.",
+        );
+
+        await GeofenceService.instance.stop();
+        geofenceKjorerGlobal.value = false;
       }
-      await prefs.setStringList('parkering_historikk', h);
-      historikkListeGlobal.value = h;
-      
-      // Tydelig avreisevarsel
-      await visPushVarsel("🚙 PARKERING AVSLUTTET", "Du har forlatt sonen. Overvåkning deaktiveres nå.");
-      
-      // AUTOMATISK STOPP: Skrur av GPS-tjenesten helt automatisk når du drar!
-      await GeofenceService.instance.stop();
+    } catch (e, st) {
+      debugPrint('Feil i geofence-listener: $e\n$st');
     }
   });
+
   runApp(const ParkeringsVarslerApp());
 }
 
 class ParkeringsVarslerApp extends StatelessWidget {
   const ParkeringsVarslerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -107,8 +135,10 @@ class ParkeringsVarslerApp extends StatelessWidget {
     );
   }
 }
+
 class DashboardSkjerm extends StatefulWidget {
   const DashboardSkjerm({super.key});
+
   @override
   State<DashboardSkjerm> createState() => _DashboardSkjermState();
 }
@@ -120,18 +150,15 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
   @override
   void initState() {
     super.initState();
+    geofenceKjorerGlobal.addListener(() {
+      if (!mounted) return;
+      setState(() {
+        _tjenesteKjorer = geofenceKjorerGlobal.value;
+        _knappTekst = _tjenesteKjorer ? "Overvåkning er aktiv" : "Aktiver overvåkning";
+      });
+    });
     _sjekkOmTjenesteKjorer();
     _lastLagretData();
-    
-    Future.microtask(() async {
-      bool kjorer = await GeofenceService.instance.isRunningService;
-      if (mounted) {
-        setState(() {
-          _tjenesteKjorer = kjorer;
-          _knappTekst = kjorer ? "Overvåkning er aktiv" : "Aktiver overvåkning";
-        });
-      }
-    });
   }
 
   void _lastLagretData() async {
@@ -140,13 +167,14 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
   }
 
   void _sjekkOmTjenesteKjorer() async {
-    bool kjorer = await GeofenceService.instance.isRunningService;
+    bool kjorer = GeofenceService.instance.isRunningService;
     setState(() {
       _tjenesteKjorer = kjorer;
       _knappTekst = kjorer ? "Overvåkning er aktiv" : "Aktiver overvåkning";
     });
+    geofenceKjorerGlobal.value = kjorer;
   }
-  
+
   void _startGeofencing() async {
     geo.LocationPermission p = await geo.Geolocator.checkPermission();
     if (p == geo.LocationPermission.denied) {
@@ -157,18 +185,40 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
       p = await geo.Geolocator.requestPermission();
       if (p != geo.LocationPermission.always) return;
     }
-    if (!(await GeofenceService.instance.isRunningService)) {
+    if (!GeofenceService.instance.isRunningService) {
       await GeofenceService.instance.start();
-      setState(() { _tjenesteKjorer = true; _knappTekst = "Overvåkning er aktiv"; });
+      setState(() {
+        _tjenesteKjorer = true;
+        _knappTekst = "Overvåkning er aktiv";
+      });
+      geofenceKjorerGlobal.value = true;
     }
+  }
+
+  Future<void> _stoppGeofencing() async {
+    if (GeofenceService.instance.isRunningService) {
+      await GeofenceService.instance.stop();
+    }
+    setState(() {
+      _tjenesteKjorer = false;
+      _knappTekst = "Aktiver overvåkning";
+    });
+    geofenceKjorerGlobal.value = false;
+    await visPushVarsel("🔕 OVERVÅKNING STOPPET", "Geofence-tjenesten er stoppet.");
   }
 
   void _finnBilenKart() async {
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble('bil_lat') ?? jobbLatitude;
     final lng = prefs.getDouble('bil_lng') ?? jobbLongitude;
-    final url = Uri.parse("maps://?q=$lat,$lng");
-    if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); }
+    final urlNative = Uri.parse("geo:$lat,$lng?q=$lat,$lng");
+    final urlGoogle = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng");
+
+    if (await canLaunchUrl(urlNative)) {
+      await launchUrl(urlNative, mode: LaunchMode.externalApplication);
+    } else if (await canLaunchUrl(urlGoogle)) {
+      await launchUrl(urlGoogle, mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _byggEkteHistorikkKort(String data) {
@@ -176,7 +226,9 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     if (deler.length < 3) return const SizedBox();
     final aktiv = deler.length == 4 && deler[3] == "1";
     return Card(
-      elevation: 0, color: Colors.white, margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         leading: CircleAvatar(
@@ -194,7 +246,12 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(title: const Text("Parkering-Assistent", style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true, backgroundColor: Colors.white, elevation: 0),
+      appBar: AppBar(
+        title: const Text("Parkering-Assistent", style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: ValueListenableBuilder(
         valueListenable: erParkertGlobal,
         builder: (context, erParkert, child) {
@@ -204,8 +261,12 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: double.infinity, padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(color: erParkert ? Colors.green : Colors.blueGrey, borderRadius: BorderRadius.circular(24)),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: erParkert ? Colors.green : Colors.blueGrey,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -215,18 +276,30 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
                           Icon(erParkert ? Icons.local_parking : Icons.drive_eta, color: Colors.white, size: 40),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                            child: Text(erParkert ? "PARKERT" : "PÅ FLYT", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(255, 255, 255, 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              erParkert ? "PARKERT" : "PÅ FLYT",
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Text(erParkert ? "Du er parkert på jobb" : "Utenfor parkeringssone", style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(
+                        erParkert ? "Du er parkert på jobb" : "Utenfor parkeringssone",
+                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 4),
                       ValueListenableBuilder(
                         valueListenable: parkeringStartetTid,
                         builder: (context, tid, child) {
-                          return Text(erParkert ? "Registrert ankomst kl. $tid" : "Søker etter parkeringsplass (300m)...", style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14));
+                          return Text(
+                            erParkert ? "Registrert ankomst kl. $tid" : "Søker etter parkeringsplass (300m)...",
+                            style: const TextStyle(color: Color.fromRGBO(255, 255, 255, 0.8), fontSize: 14),
+                          );
                         },
                       ),
                     ],
@@ -235,22 +308,37 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
                 const SizedBox(height: 15),
                 if (!erParkert)
                   SizedBox(
-                    width: double.infinity, height: 50,
+                    width: double.infinity,
+                    height: 50,
                     child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.blue, width: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.blue, width: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
                       onPressed: _finnBilenKart,
                       icon: const Icon(Icons.map, color: Colors.blue),
-                      label: const Text("Finn bilen på kartet", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue)),
+                      label: const Text(
+                        "Finn bilen på kartet",
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue),
+                      ),
                     ),
                   ),
                 const SizedBox(height: 15),
                 SizedBox(
-                  width: double.infinity, height: 54,
+                  width: double.infinity,
+                  height: 54,
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                    onPressed: _tjenesteKjorer ? null : _startGeofencing,
-                    icon: Icon(_tjenesteKjorer ? Icons.check_circle : Icons.power_settings_new),
-                    label: Text(_knappTekst, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: _tjenesteKjorer ? _stoppGeofencing : _startGeofencing,
+                    icon: Icon(_tjenesteKjorer ? Icons.power_off : Icons.power_settings_new),
+                    label: Text(
+                      _knappTekst,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 35),
@@ -260,14 +348,20 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
                   child: ValueListenableBuilder(
                     valueListenable: historikkListeGlobal,
                     builder: (context, liste, child) {
-                      if (liste.isEmpty) { return const Center(child: Text("Ingen registrerte parkeringer ennå.", style: TextStyle(color: Colors.grey))); }
+                      if (liste.isEmpty) {
+                        return const Center(
+                          child: Text("Ingen registrerte parkeringer ennå.", style: TextStyle(color: Colors.grey)),
+                        );
+                      }
                       return ListView.builder(
                         itemCount: liste.length,
-                        itemBuilder: (context, index) { return _byggEkteHistorikkKort(liste[index]); },
+                        itemBuilder: (context, index) {
+                          return _byggEkteHistorikkKort(liste[index]);
+                        },
                       );
                     },
                   ),
-                )
+                ),
               ],
             ),
           );
