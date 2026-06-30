@@ -123,8 +123,8 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     _sjekkOmTjenesteKjorer();
     _lastLagretData();
     
-    // Lytter etter endringer i bakgrunnen for å oppdatere knappen på skjermen hvis tjenesten stopper automatisk
-    GeofenceService.instance.isRunningService.then((kjorer) {
+    Future.microtask(() async {
+      bool kjorer = await GeofenceService.instance.isRunningService;
       if (mounted) {
         setState(() {
           _tjenesteKjorer = kjorer;
