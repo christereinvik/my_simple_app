@@ -7,8 +7,52 @@ final double jobbLatitude = 69.684218;
 final double jobbLongitude = 18.973769; 
 String _statusTekstGlobal = "Venter på GPS...";
 
+// Oppretter instansen for lokale varsler
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+// Funksjon som sender det faktiske varselet til iPhonens skjerm
+Future<void> visPushVarsel(String tittel, String melding) async {
+  const DarwinNotificationDetails iosDetaljer = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+  
+  const NotificationDetails plattformDetaljer = NotificationDetails(
+    iOS: iosDetaljer,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    0, // Unik ID for varselet
+    tittel,
+    melding,
+    plattformDetaljer,
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // --- INITIERING AV VARSLER OG FORESPØRSEL OM TILLATELSE ---
+  const InitializationSettings initInnstillinger = InitializationSettings(
+    iOS: DarwinInitializationSettings(
+      requestAlertPermission: false, // Vi ber om det manuelt under for full kontroll
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    ),
+  );
+  
+  await flutterLocalNotificationsPlugin.initialize(initInnstillinger);
+
+  // Tvinger iOS til å vise popup-vinduet som ber om varslingstillatelse
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+      ?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+  // --------------------------------------------------------
 
   final jobbSone = Geofence(
     id: 'jobb_parkeringsplass',
@@ -29,8 +73,12 @@ void main() async {
   service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
     if (status == GeofenceStatus.ENTER) {
       _statusTekstGlobal = "Velkommen til jobb! Sjekk parkeringen.";
+      // Sender et fysisk push-varsel til iPhonens skjerm
+      await visPushVarsel("Parkering", "Velkommen til jobb! Sjekk parkeringen.");
     } else if (status == GeofenceStatus.EXIT) {
       _statusTekstGlobal = "Du har forlatt parkeringsplassen.";
+      // Sender et fysisk push-varsel til iPhonens skjerm
+      await visPushVarsel("Parkering", "Du har forlatt parkeringsplassen.");
     }
   });
 
@@ -63,6 +111,15 @@ class _GeofenceSkjermState extends State<GeofenceSkjerm> {
       permission = await geo.Geolocator.requestPermission();
       if (permission == geo.LocationPermission.denied) {
         setState(() { _statusTekstGlobal = "Tilgang avvist av bruker."; });
+        return;
+      }
+    }
+
+    // Ekstra sjekk for å sikre "Alltid"-tilgang, som kreves for bakgrunns-GPS på iOS
+    if (permission == geo.LocationPermission.whileInUse) {
+      permission = await geo.Geolocator.requestPermission();
+      if (permission != geo.LocationPermission.always) {
+        setState(() { _statusTekstGlobal = "Feil: Appen MÅ ha stedsinnstillingen satt til 'Alltid'."; });
         return;
       }
     }
