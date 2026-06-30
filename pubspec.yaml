@@ -37,6 +37,8 @@ dependencies:
   flutter_local_notifications: 19.5.0
   geofence_service: 6.0.0+1
   geolocator: ^14.0.3
+  shared_preferences: ^2.3.5 # Legg til denne (for historikk)
+  url_launcher: ^6.3.1       # Legg til denne (for kart-knapp)
 
 dev_dependencies:
   flutter_test:
