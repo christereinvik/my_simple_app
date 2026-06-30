@@ -77,7 +77,7 @@ class DashboardSkjerm extends StatefulWidget {
 
 class _DashboardSkjermState extends State<DashboardSkjerm> {
   String _knappTekst = "Aktiver overvåkning";
-  bool _tjenesteKjører = false;
+  bool _tjenesteKjorer = false; // Fikset: Endret fra ø til o
 
   @override
   void initState() {
@@ -88,7 +88,7 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
   void _sjekkOmTjenesteKjører() async {
     bool kjører = await GeofenceService.instance.isRunningService;
     setState(() {
-      _tjenesteKjører = kjører;
+      _tjenesteKjorer = kjører; // Fikset: Endret fra ø til o
       _knappTekst = kjører ? "Overvåkning er aktiv" : "Aktiver overvåkning";
     });
   }
@@ -105,7 +105,7 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     }
     if (!(await GeofenceService.instance.isRunningService)) {
       await GeofenceService.instance.start();
-      setState(() { _tjenesteKjører = true; _knappTekst = "Overvåkning er aktiv"; });
+      setState(() { _tjenesteKjorer = true; _knappTekst = "Overvåkning er aktiv"; }); // Fikset: Endret fra ø til o
     }
   }
 
@@ -178,8 +178,8 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
                   width: double.infinity, height: 54,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                    onPressed: _tjenesteKjører ? null : _startGeofencing,
-                    icon: Icon(_tjenesteKjører ? Icons.check_circle : Icons.power_settings_new),
+                    onPressed: _tjenesteKjorer ? null : _startGeofencing, // Fikset: Endret fra ø til o
+                    icon: Icon(_tjenesteKjorer ? Icons.check_circle : Icons.power_settings_new), // Fikset: Endret fra ø til o
                     label: Text(_knappTekst, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
