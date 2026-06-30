@@ -13,20 +13,38 @@ final ValueNotifier<String> parkeringStartetTid = ValueNotifier<String>("--:--")
 final ValueNotifier<List<String>> historikkListeGlobal = ValueNotifier<List<String>>([]);
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
+// VIKTIG: Denne funksjonen setter nå opp varsler med MAKSIMAL prioritet for iOS
 Future<void> visPushVarsel(String tittel, String melding) async {
   const DarwinNotificationDetails iosDetaljer = DarwinNotificationDetails(
-    presentAlert: true, presentBadge: true, presentSound: true,
+    presentAlert: true,       // Viser banner øverst på skjermen
+    presentBadge: true,       // Viser rød prikk på app-ikonet
+    presentSound: true,       // Spiller av standard iOS-varslingslyd
+    interruptionLevel: InterruptionLevel.timeSensitive, // Bryter gjennom fokus/lydløs om tillatt
   );
-  await flutterLocalNotificationsPlugin.show(0, tittel, melding, const NotificationDetails(iOS: iosDetaljer));
+  
+  await flutterLocalNotificationsPlugin.show(
+    0, 
+    tittel, 
+    melding, 
+    const NotificationDetails(iOS: iosDetaljer)
+  );
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const InitializationSettings initSettings = InitializationSettings(
-    iOS: DarwinInitializationSettings(requestAlertPermission: false, requestBadgePermission: false, requestSoundPermission: false),
+    iOS: DarwinInitializationSettings(
+      requestAlertPermission: false, 
+      requestBadgePermission: false, 
+      requestSoundPermission: false
+    ),
   );
   await flutterLocalNotificationsPlugin.initialize(initSettings);
-  await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()?.requestPermissions(alert: true, badge: true, sound: true);
+  
+  // Ber om absolutt alle varslingsrettigheter med en gang
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+      ?.requestPermissions(alert: true, badge: true, sound: true, critical: true);
 
   final jobbSone = Geofence(
     id: 'jobb_parkeringsplass',
@@ -35,7 +53,9 @@ void main() async {
     radius: [GeofenceRadius(id: 'radius_300m', length: 300.0)],
   );
 
-  final service = GeofenceService.instance.setup(interval: 10000, accuracy: 100, allowMockLocations: false, useActivityRecognition: false);
+  final service = GeofenceService.instance.setup(
+    interval: 10000, accuracy: 100, allowMockLocations: false, useActivityRecognition: false
+  );
   service.addGeofence(jobbSone);
   
   service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
@@ -51,27 +71,26 @@ void main() async {
       h.insert(0, "$datoStempel|$tidsStempel - Aktiv|Jobb|1");
       await prefs.setStringList('parkering_historikk', h);
       historikkListeGlobal.value = h;
-      await visPushVarsel("Parkering startet", "Registrert kl. $tidsStempel.");
+      
+      // Tydelig og kraftig ankomstvarsel
+      await visPushVarsel("🚨 PARKERING STARTET", "Du har kjørt inn i sonen! Registrert ankomst kl. $tidsStempel.");
+      
     } else if (status == GeofenceStatus.EXIT) {
       erParkertGlobal.value = false;
       if (h.isNotEmpty) {
         final deler = h.first.split('|');
         if (deler.length >= 4 && deler[3] == "1") {
-          final ankomstTid = deler[1].split(' ').first;
-          h[0] = "${deler[0]}|$ankomstTid - $tidsStempel|${deler[2]}|0";
+          h[0] = "${deler[0]}|${deler[1].split(' ').first} - $tidsStempel|${deler[2]}|0";
         }
-      }
-      
-      if (location != null) {
-        await prefs.setDouble('bil_lat', location.latitude);
-        await prefs.setDouble('bil_lng', location.longitude);
-      } else {
-        await prefs.setDouble('bil_lat', jobbLatitude);
-        await prefs.setDouble('bil_lng', jobbLongitude);
       }
       await prefs.setStringList('parkering_historikk', h);
       historikkListeGlobal.value = h;
-      await visPushVarsel("Parkering avsluttet", "Du har forlatt jobb.");
+      
+      // Tydelig avreisevarsel
+      await visPushVarsel("🚙 PARKERING AVSLUTTET", "Du har forlatt sonen. Overvåkning deaktiveres nå.");
+      
+      // AUTOMATISK STOPP: Skrur av GPS-tjenesten helt automatisk når du drar!
+      await GeofenceService.instance.stop();
     }
   });
   runApp(const ParkeringsVarslerApp());
@@ -103,6 +122,16 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     super.initState();
     _sjekkOmTjenesteKjorer();
     _lastLagretData();
+    
+    // Lytter etter endringer i bakgrunnen for å oppdatere knappen på skjermen hvis tjenesten stopper automatisk
+    GeofenceService.instance.isRunningService.then((kjorer) {
+      if (mounted) {
+        setState(() {
+          _tjenesteKjorer = kjorer;
+          _knappTekst = kjorer ? "Overvåkning er aktiv" : "Aktiver overvåkning";
+        });
+      }
+    });
   }
 
   void _lastLagretData() async {
@@ -138,11 +167,8 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble('bil_lat') ?? jobbLatitude;
     final lng = prefs.getDouble('bil_lng') ?? jobbLongitude;
-    
     final url = Uri.parse("maps://?q=$lat,$lng");
-    if (await canLaunchUrl(url)) { 
-      await launchUrl(url, mode: LaunchMode.externalApplication); 
-    }
+    if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); }
   }
 
   Widget _byggEkteHistorikkKort(String data) {
