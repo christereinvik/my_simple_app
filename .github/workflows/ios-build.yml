@@ -1,4 +1,4 @@
-name: Flutter iOS Release Build for Sideloadly
+name: Flutter iOS Profile Build for Sideloadly
 
 on:
   push:
@@ -27,29 +27,25 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Unsigned iOS Release
+      - name: Build Unsigned iOS Profile
         run: |
           flutter pub get
           cd ios
           pod repo update
           pod install
           cd ..
-          # Bygger i Release-modus i stedet for Debug, slik at appen kan åpnes på iOS 14+
+          # Vi bruker --profile i stedet for release for å hoppe over Apples team- og sertifikatkrav i skyen
           flutter build ios --profile --no-codesign
 
       - name: Package IPA for Sideloadly
         run: |
-          # Oppretter den påkrevde Payload-mappestrukturen for iOS-apper
           mkdir -p build/ios/iphoneos/Payload
-          # Henter appen fra profile-mappen i stedet for release-mappen
           cp -r build/ios/profile-iphoneos/Runner.app build/ios/iphoneos/Payload/
           cd build/ios/iphoneos
-          # Zipper det sammen til en ferdig .ipa-fil i rotmappen
           zip -r ../../Runner.ipa Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-release-ipa
+          name: ios-profile-ipa
           path: build/Runner.ipa
-
