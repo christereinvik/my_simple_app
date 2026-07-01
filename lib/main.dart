@@ -17,6 +17,7 @@ final ValueNotifier<String> parkeringStartetTid = ValueNotifier<String>("--:--")
 final ValueNotifier<List<ParkeringHistorikk>> historikkListeGlobal = ValueNotifier<List<ParkeringHistorikk>>([]);
 final ValueNotifier<bool> geofenceKjorerGlobal = ValueNotifier<bool>(false);
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class ParkeringHistorikk {
   final String dato;
@@ -107,6 +108,8 @@ class ParkeringHistorikk {
 }
 
 Future<void> visPushVarsel(String tittel, String melding) async {
+  final navigatorState = navigatorKey.currentState;
+
   const AndroidNotificationDetails androidDetaljer = AndroidNotificationDetails(
     'parkering_channel',
     'Parkering-varsler',
@@ -128,6 +131,19 @@ Future<void> visPushVarsel(String tittel, String melding) async {
     tittel,
     melding,
     const NotificationDetails(android: androidDetaljer, iOS: iosDetaljer),
+  );
+
+  if (navigatorState == null || !navigatorState.mounted) return;
+
+  showDialog(
+    context: navigatorState.context,
+    builder: (context) => AlertDialog(
+      title: Text(tittel),
+      content: Text(melding),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+      ],
+    ),
   );
 }
 
@@ -192,8 +208,8 @@ void main() async {
         historikkListeGlobal.value = List.from(historikk);
 
         await visPushVarsel(
-          "🚨 PARKERING STARTET",
-          "Du har kjørt inn i sonen! Registrert ankomst kl. $tidsStempel.",
+          "🚨 PARKERING PÅ JOBB",
+          "Husk å åpne betalingsappen nå og starte parkeringen.",
         );
       } else if (status == GeofenceStatus.EXIT) {
         erParkertGlobal.value = false;
@@ -209,8 +225,8 @@ void main() async {
         historikkListeGlobal.value = List.from(historikk);
 
         await visPushVarsel(
-          "🚙 PARKERING AVSLUTTET",
-          "Du har forlatt sonen. Overvåkning deaktiveres nå.",
+          "🔚 PARKERING AVSLUTTET",
+          "Husk å avslutte betalingsappen nå før du kjører videre.",
         );
 
         await GeofenceService.instance.stop();
@@ -230,6 +246,7 @@ class ParkeringsVarslerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
       home: const DashboardSkjerm(),
@@ -315,25 +332,28 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     await visPushVarsel("🔕 OVERVÅKNING STOPPET", "Geofence-tjenesten er stoppet.");
   }
 
-  Future<void> _tomHistorikk() async {
-    final bekreft = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Tøm historikk'),
-          content: const Text('Vil du fjerne alle parkeringslogger?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Avbryt')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Tøm')),
-          ],
-        );
-      },
-    );
+Future<void> _tomHistorikk() async {
+  if (!mounted) return;
 
-    if (bekreft != true) return;
-    await _lagreHistorikkListe([]);
-    await visPushVarsel("🧹 Historikk tømt", "Alle parkeringslogger er fjernet.");
-  }
+  final bekreft = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Tøm historikk'),
+        content: const Text('Vil du fjerne alle parkeringslogger?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Avbryt')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Tøm')),
+        ],
+      );
+    },
+  );
+
+  if (!mounted || bekreft != true) return;
+
+  await _lagreHistorikkListe([]);
+  await visPushVarsel("🧹 Historikk tømt", "Alle parkeringslogger er fjernet.");
+}
 
   Future<void> _arkiverFullforte() async {
     final prefs = await SharedPreferences.getInstance();
