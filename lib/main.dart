@@ -14,6 +14,7 @@ const String arkivKey = 'parkering_historikk_arkiv';
 
 final ValueNotifier<bool> erParkertGlobal = ValueNotifier<bool>(false);
 final ValueNotifier<String> parkeringStartetTid = ValueNotifier<String>("--:--");
+final ValueNotifier<String> bilPosisjonTekst = ValueNotifier<String>("Ukjent");
 final ValueNotifier<List<ParkeringHistorikk>> historikkListeGlobal = ValueNotifier<List<ParkeringHistorikk>>([]);
 final ValueNotifier<bool> geofenceKjorerGlobal = ValueNotifier<bool>(false);
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -195,6 +196,9 @@ void main() async {
         await prefs.setDouble('bil_lat', location.latitude);
         await prefs.setDouble('bil_lng', location.longitude);
 
+        // Vis bilens posisjon
+        bilPosisjonTekst.value = "Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}";
+
         final nyPost = ParkeringHistorikk(
           dato: datoStempel,
           startTid: tidsStempel,
@@ -213,6 +217,7 @@ void main() async {
         );
       } else if (status == GeofenceStatus.EXIT) {
         erParkertGlobal.value = false;
+        bilPosisjonTekst.value = "Ukjent";
         final aktivIndex = historikk.indexWhere((element) => element.aktiv);
         if (aktivIndex != -1) {
           historikk[aktivIndex] = historikk[aktivIndex].copyWith(
@@ -470,6 +475,26 @@ Future<void> _tomHistorikk() async {
                           );
                         },
                       ),
+                      if (erParkert)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 12),
+                            ValueListenableBuilder(
+                              valueListenable: bilPosisjonTekst,
+                              builder: (context, posisjon, child) {
+                                return Text(
+                                  "📍 $posisjon",
+                                  style: const TextStyle(
+                                    color: Color.fromRGBO(255, 255, 255, 0.9),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
