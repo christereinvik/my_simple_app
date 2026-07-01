@@ -154,14 +154,36 @@ Future<void> visPushVarsel(String tittel, String melding) async {
   );
 }
 
+Future<void> sendTestNotification() async {
+  final android = AndroidNotificationDetails(
+    'test_channel',
+    'Test-varsler',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+  );
+  final ios = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+    sound: 'default',
+  );
+  await flutterLocalNotificationsPlugin.show(
+    9999,
+    'Testvarsel',
+    'Dette er et testvarsel fra appen',
+    NotificationDetails(android: android, iOS: ios),
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const InitializationSettings initSettings = InitializationSettings(
+  final InitializationSettings initSettings = InitializationSettings(
     android: AndroidInitializationSettings('@mipmap/ic_launcher'),
     iOS: DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     ),
   );
   await flutterLocalNotificationsPlugin.initialize(initSettings);
@@ -246,8 +268,6 @@ void main() async {
           "🔚 PARKERING AVSLUTTET",
           "Husk å avslutte betalingsappen nå før du kjører videre.",
         );
-
-        // TJENESTEN FORTSETTER Å KJØRE - IKKE STOPP DEN HER
       }
     } catch (e, st) {
       debugPrint('Feil i geofence-listener: $e\n$st');
@@ -610,12 +630,18 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Siste parkeringer",
+                    Expanded(
+                      child: const Text(
+                        "Siste parkeringer",
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87)),
+                            color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         TextButton(
                           onPressed: _arkiverFullforte,
@@ -655,6 +681,10 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
             ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => sendTestNotification(),
+        child: const Icon(Icons.notification_add),
       ),
     );
   }
