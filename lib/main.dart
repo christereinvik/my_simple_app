@@ -243,8 +243,7 @@ void main() async {
           "Husk å avslutte betalingsappen nå før du kjører videre.",
         );
 
-        await GeofenceService.instance.stop();
-        geofenceKjorerGlobal.value = false;
+        // TJENESTEN FORTSETTER Å KJØRE - IKKE STOPP DEN HER
       }
     } catch (e, st) {
       debugPrint('Feil i geofence-listener: $e\n$st');
