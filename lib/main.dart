@@ -15,9 +15,11 @@ const String arkivKey = 'parkering_historikk_arkiv';
 final ValueNotifier<bool> erParkertGlobal = ValueNotifier<bool>(false);
 final ValueNotifier<String> parkeringStartetTid = ValueNotifier<String>("--:--");
 final ValueNotifier<String> bilPosisjonTekst = ValueNotifier<String>("Ukjent");
-final ValueNotifier<List<ParkeringHistorikk>> historikkListeGlobal = ValueNotifier<List<ParkeringHistorikk>>([]);
+final ValueNotifier<List<ParkeringHistorikk>> historikkListeGlobal =
+    ValueNotifier<List<ParkeringHistorikk>>([]);
 final ValueNotifier<bool> geofenceKjorerGlobal = ValueNotifier<bool>(false);
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class ParkeringHistorikk {
@@ -182,7 +184,8 @@ void main() async {
   service.addGeofenceStatusChangeListener((geofence, radius, status, location) async {
     try {
       final na = DateTime.now();
-      final tidsStempel = "${na.hour.toString().padLeft(2, '0')}:${na.minute.toString().padLeft(2, '0')}";
+      final tidsStempel =
+          "${na.hour.toString().padLeft(2, '0')}:${na.minute.toString().padLeft(2, '0')}";
       final datoStempel = "${na.day}.${na.month}";
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(historikkKey) ?? [];
@@ -196,8 +199,8 @@ void main() async {
         await prefs.setDouble('bil_lat', location.latitude);
         await prefs.setDouble('bil_lng', location.longitude);
 
-        // Vis bilens posisjon
-        bilPosisjonTekst.value = "Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}";
+        bilPosisjonTekst.value =
+            "Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}";
 
         final nyPost = ParkeringHistorikk(
           dato: datoStempel,
@@ -208,7 +211,10 @@ void main() async {
         );
         historikk.insert(0, nyPost);
 
-        await prefs.setStringList(historikkKey, historikk.map((e) => e.toJson()).toList());
+        await prefs.setStringList(
+          historikkKey,
+          historikk.map((e) => e.toJson()).toList(),
+        );
         historikkListeGlobal.value = List.from(historikk);
 
         await visPushVarsel(
@@ -226,7 +232,10 @@ void main() async {
           );
         }
 
-        await prefs.setStringList(historikkKey, historikk.map((e) => e.toJson()).toList());
+        await prefs.setStringList(
+          historikkKey,
+          historikk.map((e) => e.toJson()).toList(),
+        );
         historikkListeGlobal.value = List.from(historikk);
 
         await visPushVarsel(
@@ -286,7 +295,10 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
 
   Future<void> _lagreHistorikkListe(List<ParkeringHistorikk> liste) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(historikkKey, liste.map((e) => e.toJson()).toList());
+    await prefs.setStringList(
+      historikkKey,
+      liste.map((e) => e.toJson()).toList(),
+    );
     historikkListeGlobal.value = List.from(liste);
   }
 
@@ -337,28 +349,32 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
     await visPushVarsel("🔕 OVERVÅKNING STOPPET", "Geofence-tjenesten er stoppet.");
   }
 
-Future<void> _tomHistorikk() async {
-  if (!mounted) return;
+  Future<void> _tomHistorikk() async {
+    if (!mounted) return;
 
-  final bekreft = await showDialog<bool>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Tøm historikk'),
-        content: const Text('Vil du fjerne alle parkeringslogger?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Avbryt')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Tøm')),
-        ],
-      );
-    },
-  );
+    final bekreft = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tøm historikk'),
+          content: const Text('Vil du fjerne alle parkeringslogger?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Avbryt')),
+            TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Tøm')),
+          ],
+        );
+      },
+    );
 
-  if (!mounted || bekreft != true) return;
+    if (!mounted || bekreft != true) return;
 
-  await _lagreHistorikkListe([]);
-  await visPushVarsel("🧹 Historikk tømt", "Alle parkeringslogger er fjernet.");
-}
+    await _lagreHistorikkListe([]);
+    await visPushVarsel("🧹 Historikk tømt", "Alle parkeringslogger er fjernet.");
+  }
 
   Future<void> _arkiverFullforte() async {
     final prefs = await SharedPreferences.getInstance();
@@ -370,9 +386,15 @@ Future<void> _tomHistorikk() async {
     if (fullforte.isEmpty) return;
 
     arkivert.insertAll(0, fullforte);
-    await prefs.setStringList(arkivKey, arkivert.map((e) => e.toJson()).toList());
+    await prefs.setStringList(
+      arkivKey,
+      arkivert.map((e) => e.toJson()).toList(),
+    );
     await _lagreHistorikkListe(aktive);
-    await visPushVarsel("🗄️ Historikk arkivert", "Fullførte parkeringsøkter er flyttet til arkiv.");
+    await visPushVarsel(
+      "🗄️ Historikk arkivert",
+      "Fullførte parkeringsøkter er flyttet til arkiv.",
+    );
   }
 
   void _finnBilenKart() async {
@@ -380,7 +402,8 @@ Future<void> _tomHistorikk() async {
     final lat = prefs.getDouble('bil_lat') ?? jobbLatitude;
     final lng = prefs.getDouble('bil_lng') ?? jobbLongitude;
     final urlNative = Uri.parse("geo:$lat,$lng?q=$lat,$lng");
-    final urlGoogle = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng");
+    final urlGoogle =
+        Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng");
 
     if (await canLaunchUrl(urlNative)) {
       await launchUrl(urlNative, mode: LaunchMode.externalApplication);
@@ -397,20 +420,25 @@ Future<void> _tomHistorikk() async {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: data.aktiv ? Colors.green.shade100 : Colors.grey.shade200,
-          child: Icon(Icons.local_parking, color: data.aktiv ? Colors.green : Colors.grey),
+          backgroundColor:
+              data.aktiv ? Colors.green.shade100 : Colors.grey.shade200,
+          child: Icon(Icons.local_parking,
+              color: data.aktiv ? Colors.green : Colors.grey),
         ),
-        title: Text(data.dato, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(data.dato,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("Start: ${data.startTid}"),
             if (data.stoppTid.isNotEmpty) Text("Stopp: ${data.stoppTid}"),
             const SizedBox(height: 4),
-            Text("Varighet: ${data.varighetTekst}", style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text("Varighet: ${data.varighetTekst}",
+                style: const TextStyle(fontWeight: FontWeight.w500)),
           ],
         ),
-        trailing: Text(data.sted, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+        trailing: Text(data.sted,
+            style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
       ),
     );
   }
@@ -420,7 +448,8 @@ Future<void> _tomHistorikk() async {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text("Parkering-Assistent", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Parkering-Assistent",
+            style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -446,16 +475,21 @@ Future<void> _tomHistorikk() async {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(erParkert ? Icons.local_parking : Icons.drive_eta, color: Colors.white, size: 40),
+                          Icon(erParkert ? Icons.local_parking : Icons.drive_eta,
+                              color: Colors.white, size: 40),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: const Color.fromRGBO(255, 255, 255, 0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               erParkert ? "PARKERT" : "PÅ FLYT",
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12),
                             ),
                           ),
                         ],
@@ -463,15 +497,22 @@ Future<void> _tomHistorikk() async {
                       const SizedBox(height: 20),
                       Text(
                         erParkert ? "Du er parkert på jobb" : "Utenfor parkeringssone",
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       ValueListenableBuilder(
                         valueListenable: parkeringStartetTid,
                         builder: (context, tid, child) {
                           return Text(
-                            erParkert ? "Registrert ankomst kl. $tid" : "Søker etter parkeringsplass (300m)...",
-                            style: const TextStyle(color: Color.fromRGBO(255, 255, 255, 0.8), fontSize: 14),
+                            erParkert
+                                ? "Registrert ankomst kl. $tid"
+                                : "Søker etter parkeringsplass (300m)...",
+                            style: const TextStyle(
+                                color: Color.fromRGBO(255, 255, 255, 0.8),
+                                fontSize: 14),
                           );
                         },
                       ),
@@ -525,13 +566,17 @@ Future<void> _tomHistorikk() async {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.blue, width: 2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: _finnBilenKart,
                       icon: const Icon(Icons.map, color: Colors.blue),
                       label: const Text(
                         "Finn bilen på kartet",
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue),
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue),
                       ),
                     ),
                   ),
@@ -543,13 +588,18 @@ Future<void> _tomHistorikk() async {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
-                    onPressed: _tjenesteKjorer ? _stoppGeofencing : _startGeofencing,
-                    icon: Icon(_tjenesteKjorer ? Icons.power_off : Icons.power_settings_new),
+                    onPressed:
+                        _tjenesteKjorer ? _stoppGeofencing : _startGeofencing,
+                    icon: Icon(_tjenesteKjorer
+                        ? Icons.power_off
+                        : Icons.power_settings_new),
                     label: Text(
                       _knappTekst,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -557,7 +607,11 @@ Future<void> _tomHistorikk() async {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Siste parkeringer", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const Text("Siste parkeringer",
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87)),
                     Row(
                       children: [
                         TextButton(
@@ -579,7 +633,10 @@ Future<void> _tomHistorikk() async {
                     builder: (context, liste, child) {
                       if (liste.isEmpty) {
                         return const Center(
-                          child: Text("Ingen registrerte parkeringer ennå.", style: TextStyle(color: Colors.grey)),
+                          child: Text(
+                            "Ingen registrerte parkeringer ennå.",
+                            style: TextStyle(color: Colors.grey),
+                          ),
                         );
                       }
                       return ListView.builder(
