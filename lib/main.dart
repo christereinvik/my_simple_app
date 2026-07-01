@@ -683,7 +683,15 @@ class _DashboardSkjermState extends State<DashboardSkjerm> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => sendTestNotification(),
+        onPressed: () async {
+    debugPrint('Testvarsel knapp trykket');
+    await sendTestNotification();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Testvarsel sendt')),
+      );
+    }
+  },
         child: const Icon(Icons.notification_add),
       ),
     );
