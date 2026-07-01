@@ -483,13 +483,32 @@ Future<void> _tomHistorikk() async {
                             ValueListenableBuilder(
                               valueListenable: bilPosisjonTekst,
                               builder: (context, posisjon, child) {
-                                return Text(
-                                  "📍 $posisjon",
-                                  style: const TextStyle(
-                                    color: Color.fromRGBO(255, 255, 255, 0.9),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "📍 $posisjon",
+                                      style: const TextStyle(
+                                        color: Color.fromRGBO(255, 255, 255, 0.9),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 40,
+                                      child: ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          foregroundColor: Colors.green,
+                                        ),
+                                        onPressed: _finnBilenKart,
+                                        icon: const Icon(Icons.map),
+                                        label: const Text("Vis på kart"),
+                                      ),
+                                    ),
+                                  ],
                                 );
                               },
                             ),
