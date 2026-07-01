@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:geofence_service/geofence_service.dart';
@@ -113,27 +114,30 @@ class ParkeringHistorikk {
 Future<void> visPushVarsel(String tittel, String melding) async {
   final navigatorState = navigatorKey.currentState;
 
-  const AndroidNotificationDetails androidDetaljer = AndroidNotificationDetails(
+  final AndroidNotificationDetails androidDetaljer = AndroidNotificationDetails(
     'parkering_channel',
     'Parkering-varsler',
     channelDescription: 'Varsler om parkering og sonestatus',
     importance: Importance.max,
     priority: Priority.high,
     playSound: true,
+    enableVibration: true,
+    vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
   );
 
   const DarwinNotificationDetails iosDetaljer = DarwinNotificationDetails(
     presentAlert: true,
     presentBadge: true,
     presentSound: true,
+    sound: 'default',
     interruptionLevel: InterruptionLevel.timeSensitive,
   );
 
   await flutterLocalNotificationsPlugin.show(
-    0,
+    DateTime.now().millisecondsSinceEpoch ~/ 1000,
     tittel,
     melding,
-    const NotificationDetails(android: androidDetaljer, iOS: iosDetaljer),
+    NotificationDetails(android: androidDetaljer, iOS: iosDetaljer),
   );
 
   if (navigatorState == null || !navigatorState.mounted) return;
